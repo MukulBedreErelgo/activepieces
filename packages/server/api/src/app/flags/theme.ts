@@ -153,7 +153,7 @@ export function generateTheme({
 
 export const defaultTheme = generateTheme({
     primaryColor: '#6e41e2',
-    websiteName: 'Munshify Workflow',
+    websiteName: 'Workflow',
     fullLogoUrl: 'https://cdn.munshify.com/logos/munshifyLogo.png',
     favIconUrl: 'https://cdn.munshify.com/logos/munshifyLogo.png',
     logoIconUrl: 'https://cdn.munshify.com/logos/munshifyLogo.png',
