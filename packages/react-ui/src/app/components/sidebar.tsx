@@ -138,22 +138,6 @@ export function Sidebar({
                 ))}
 
                 <div className="grow"></div>
-                {isHomeDashboard && showSupportAndDocs && (
-                  <>
-                    <CustomTooltipLink
-                      to={supportUrl}
-                      label={t('Support')}
-                      Icon={QuestionMarkCircledIcon}
-                      newWindow={true}
-                    />
-                    <CustomTooltipLink
-                      to="https://activepieces.com/docs"
-                      label={t('Docs')}
-                      Icon={FileTextIcon}
-                      newWindow={true}
-                    />
-                  </>
-                )}
               </nav>
             </ScrollArea>
           </aside>
