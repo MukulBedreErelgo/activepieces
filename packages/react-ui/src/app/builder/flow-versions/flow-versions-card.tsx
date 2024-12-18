@@ -117,6 +117,7 @@ const FlowVersionDetailsCard = React.memo(
     published,
   }: FlowVersionDetailsCardProps) => {
     const { checkAccess } = useAuthorization();
+    const userHasPermissionToWriteFlow = checkAccess(Permission.WRITE_FLOW);
     const [setBuilderVersion, setLeftSidebar, setReadonly] =
       useBuilderStateContext((state) => [
         state.setVersion,
@@ -139,7 +140,7 @@ const FlowVersionDetailsCard = React.memo(
         setBuilderVersion(populatedFlowVersion);
         setReadonly(
           populatedFlowVersion.state === FlowVersionState.LOCKED ||
-            !checkAccess(Permission.WRITE_FLOW),
+            !userHasPermissionToWriteFlow,
         );
       },
       onError: (error) => {
@@ -210,12 +211,14 @@ const FlowVersionDetailsCard = React.memo(
           {flowVersion.state === FlowVersionState.DRAFT && (
             <FlowVersionStateDot
               state={flowVersion.state}
+              versionId={flowVersion.id}
             ></FlowVersionStateDot>
           )}
 
           {published && flowVersion.state === FlowVersionState.LOCKED && (
             <FlowVersionStateDot
               state={flowVersion.state}
+              versionId={flowVersion.id}
             ></FlowVersionStateDot>
           )}
 

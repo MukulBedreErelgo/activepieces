@@ -1,5 +1,4 @@
 import { TlsOptions } from 'node:tls'
-import { AppSystemProp, SharedSystemProp, system } from '@activepieces/server-shared'
 import { ApEdition, ApEnvironment, isNil } from '@activepieces/shared'
 import { DataSource, MigrationInterface } from 'typeorm'
 import { MakeStripeSubscriptionNullable1685053959806 } from '../ee/database/migrations/postgres/1685053959806-MakeStripeSubscriptionNullable'
@@ -21,8 +20,9 @@ import { ModifyBilling1694902537045 } from '../ee/database/migrations/postgres/1
 import { AddDatasourcesLimit1695916063833 } from '../ee/database/migrations/postgres/1695916063833-AddDatasourcesLimit'
 import { AddPlatform1697717995884 } from '../ee/database/migrations/postgres/1697717995884-add-platform'
 import { AddCustomDomain1698077078271 } from '../ee/database/migrations/postgres/1698077078271-AddCustomDomain'
+import { system } from '../helper/system/system'
+import { AppSystemProp } from '../helper/system/system-prop'
 import { commonProperties } from './database-connection'
-import { MigrateSMTPInPlatform1729602169179 } from './migration/1729602169179-MigrateSMTPInPlatform'
 import { AddPieceTypeAndPackageTypeToFlowVersion1696245170061 } from './migration/common/1696245170061-add-piece-type-and-package-type-to-flow-version'
 import { AddPieceTypeAndPackageTypeToFlowTemplate1696245170062 } from './migration/common/1696245170062-add-piece-type-and-package-type-to-flow-template'
 import { StoreCodeInsideFlow1697969398200 } from './migration/common/1697969398200-store-code-inside-flow'
@@ -37,6 +37,7 @@ import { RemoveUniqueConstraintOnStepFile1725570317713 } from './migration/commo
 import { AddUserSessionId1727130193726 } from './migration/common/1727130193726-AddUserSessionId'
 import { AddLicenseKeyIntoPlatform1728827704109 } from './migration/common/1728827704109-AddLicenseKeyIntoPlatform'
 import { ChangeProjectUniqueConstraintToPartialIndex1729098769827 } from './migration/common/1729098769827-ChangeProjectUniqueConstraintToPartialIndex'
+import { SwitchToRouter1731019013340 } from './migration/common/1731019013340-switch-to-router'
 import { AddAuthToPiecesMetadata1688922241747 } from './migration/postgres//1688922241747-AddAuthToPiecesMetadata'
 import { FlowAndFileProjectId1674788714498 } from './migration/postgres/1674788714498-FlowAndFileProjectId'
 import { initializeSchema1676238396411 } from './migration/postgres/1676238396411-initialize-schema'
@@ -153,16 +154,27 @@ import { SupportS3Files1726364421096 } from './migration/postgres/1726364421096-
 import { AddAiProviderTable1726445983043 } from './migration/postgres/1726445983043-AddAiProviderTable'
 import { AddAiTokensForProjectPlan1726446092010 } from './migration/postgres/1726446092010-AddAiTokensForProjectPlan'
 import { RemovePremiumPieces1727865841722 } from './migration/postgres/1727865841722-RemovePremiumPieces'
+import { MigrateSMTPInPlatform1729602169179 } from './migration/postgres/1729602169179-MigrateSMTPInPlatform'
+import { AddPinnedPieces1729776414647 } from './migration/postgres/1729776414647-AddPinnedPieces'
+import { AddConnectionOwner1730123432651 } from './migration/postgres/1730123432651-AddConnectionOwner'
+import { AppConnectionsSetNull1730627612799 } from './migration/postgres/1730627612799-AppConnectionsSetNull'
+import { AddFlowSchemaVersion1730760434336 } from './migration/postgres/1730760434336-AddFlowSchemaVersion'
+import { StoreTriggerEventsInFile1731247581852 } from './migration/postgres/1731247581852-StoreTriggerEventsInFile'
+import { CreateProjectRoleTable1731424289830 } from './migration/postgres/1731424289830-CreateProjectRoleTable'
+import { MigrateConnectionNames1731428722977 } from './migration/postgres/1731428722977-MigrateConnectionNames'
+import { AddGlobalConnectionsAndRbacForPlatform1731532843905 } from './migration/postgres/1731532843905-AddGlobalConnectionsAndRbacForPlatform'
+import { AddAuditLogIndicies1731711188507 } from './migration/postgres/1731711188507-AddAuditLogIndicies'
+import { AddIndiciesToRunAndTriggerData1732324567513 } from './migration/postgres/1732324567513-AddIndiciesToRunAndTriggerData'
+import { AddProjectRelationInUserInvitation1732790412900 } from './migration/postgres/1732790673766-AddProjectRelationInUserInvitation'
+import { RemoveWorkerType1734439097357 } from './migration/postgres/1734439097357-RemoveWorkerType'
 
 const getSslConfig = (): boolean | TlsOptions => {
     const useSsl = system.get(AppSystemProp.POSTGRES_USE_SSL)
-
     if (useSsl === 'true') {
         return {
             ca: system.get(AppSystemProp.POSTGRES_SSL_CA)?.replace(/\\n/g, '\n'),
         }
     }
-
     return false
 }
 
@@ -255,6 +267,18 @@ const getMigrations = (): (new () => MigrationInterface)[] => {
         AddLicenseKeyIntoPlatform1728827704109,
         ChangeProjectUniqueConstraintToPartialIndex1729098769827,
         MigrateSMTPInPlatform1729602169179,
+        AddPinnedPieces1729776414647,
+        AddConnectionOwner1730123432651,
+        AppConnectionsSetNull1730627612799,
+        AddFlowSchemaVersion1730760434336,
+        SwitchToRouter1731019013340,
+        StoreTriggerEventsInFile1731247581852,
+        CreateProjectRoleTable1731424289830,
+        MigrateConnectionNames1731428722977,
+        AddGlobalConnectionsAndRbacForPlatform1731532843905,
+        AddIndiciesToRunAndTriggerData1732324567513,
+        AddProjectRelationInUserInvitation1732790412900,
+        RemoveWorkerType1734439097357,
     ]
 
     const edition = system.getEdition()
@@ -310,7 +334,7 @@ const getMigrations = (): (new () => MigrationInterface)[] => {
                 CascadeProjectDeleteToActivity1710720610670,
                 AddBranchTypeToGit1711073772867,
                 PiecesProjectLimits1712279318440,
-
+                
                 // Cloud Only Migrations, before unifing the migrations.
                 ChangeToJsonToKeepKeysOrder1685991260335,
                 AddPieceTypeAndPackageTypeToFlowTemplate1696245170062,
@@ -329,6 +353,8 @@ const getMigrations = (): (new () => MigrationInterface)[] => {
                 ModifyProjectMembers1717961669938,
                 MigrateAuditEventSchema1723489038729,
                 AddAiTokensForProjectPlan1726446092010,
+                AddAuditLogIndicies1731711188507,
+
             )
             break
         case ApEdition.COMMUNITY:
@@ -343,7 +369,7 @@ const getMigrations = (): (new () => MigrationInterface)[] => {
 }
 
 const getMigrationConfig = (): MigrationConfig => {
-    const env = system.getOrThrow<ApEnvironment>(SharedSystemProp.ENVIRONMENT)
+    const env = system.getOrThrow<ApEnvironment>(AppSystemProp.ENVIRONMENT)
 
     if (env === ApEnvironment.TESTING) {
         return {}

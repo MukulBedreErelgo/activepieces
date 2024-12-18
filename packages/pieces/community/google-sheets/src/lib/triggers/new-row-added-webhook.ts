@@ -55,6 +55,7 @@ export const newRowAddedTrigger = createTrigger({
 			context.auth,
 			spreadsheet_id,
 			context.webhookUrl,
+			context.propsValue.include_team_drives,
 		);
 
 		// store channel response
@@ -87,6 +88,9 @@ export const newRowAddedTrigger = createTrigger({
 		const currentRowValues = await getWorkSheetValues(context.auth, spreadsheet_id, sheetName);
 		const currentRowCount = currentRowValues.length;
 
+		const headers =  currentRowValues[0] ?? [];
+		const headerCount = headers.length;
+
 		// if no new rows return
 		if (oldRowCount >= currentRowCount) {
 			if (oldRowCount > currentRowCount) {
@@ -109,7 +113,7 @@ export const newRowAddedTrigger = createTrigger({
 		await context.store.put(`${sheet_id}`, currentRowCount);
 
 		// transform row values
-		const transformedRowValues = transformWorkSheetValues(newRowValues, oldRowCount);
+		const transformedRowValues = transformWorkSheetValues(newRowValues, oldRowCount,headerCount);
 		return transformedRowValues.map((row) => {
 			return {
 				...row,
@@ -127,6 +131,7 @@ export const newRowAddedTrigger = createTrigger({
 				context.auth,
 				context.propsValue.spreadsheet_id,
 				context.webhookUrl,
+				context.propsValue.include_team_drives,
 			);
 			// store channel response
 			await context.store.put<WebhookInformation>(
@@ -140,8 +145,11 @@ export const newRowAddedTrigger = createTrigger({
 		const sheetName = await getWorkSheetName(context.auth, spreadsheet_id, sheet_id);
 		const currentSheetValues = await getWorkSheetValues(context.auth, spreadsheet_id, sheetName);
 
+		const headers =  currentSheetValues[0] ?? [];
+		const headerCount = headers.length;
+
 		// transform row values
-		const transformedRowValues = transformWorkSheetValues(currentSheetValues, 0)
+		const transformedRowValues = transformWorkSheetValues(currentSheetValues, 0,headerCount)
 			.slice(-5)
 			.reverse();
 

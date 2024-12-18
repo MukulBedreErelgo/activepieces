@@ -25,7 +25,7 @@ export const proxyController: FastifyPluginCallbackTypebox = (
             platformId,
             provider,
         })
-        const limitResponse = await aiTokenLimit.exceededLimit({
+        const limitResponse = await aiTokenLimit(request.log).exceededLimit({
             projectId,
             tokensToConsume: 0,
         })
@@ -53,18 +53,22 @@ export const proxyController: FastifyPluginCallbackTypebox = (
                 headers: cleanHeaders,
                 body: JSON.stringify(request.body),
             })
-            const data = await response.json()
-            await projectUsageService.increaseUsage(projectId, 1, 'aiTokens')
 
-            rejectedPromiseHandler(telemetry.trackProject(projectId, {
+            const responseContentType = response.headers.get('content-type')
+
+            const data = await parseResponseData(response, responseContentType)
+
+            await projectUsageService(request.log).increaseUsage(projectId, 1, 'aiTokens')
+
+            rejectedPromiseHandler(telemetry(request.log).trackProject(projectId, {
                 name: TelemetryEventName.AI_PROVIDER_USED,
                 payload: {
                     projectId,
                     platformId,
                     provider,
                 },
-            }))
-            await reply.code(response.status).send(data)
+            }), request.log)
+            await reply.code(response.status).type(responseContentType ?? 'text/plain').send(data)
         }
         catch (error) {
             if (error instanceof Response) {
@@ -72,7 +76,7 @@ export const proxyController: FastifyPluginCallbackTypebox = (
                 await reply.code(error.status).send(errorData)
             }
             else {
-                exceptionHandler.handle(error)
+                exceptionHandler.handle(error, request.log)
                 await reply
                     .code(500)
                     .send({ message: 'An unexpected error occurred in the proxy' })
@@ -80,6 +84,19 @@ export const proxyController: FastifyPluginCallbackTypebox = (
         }
     })
     done()
+}
+
+async function parseResponseData(response: Response, responseContentType: string | null) {
+    if (responseContentType?.includes('application/json')) {
+        return response.json()
+    }
+    if (responseContentType?.includes('application/octet-stream')) {
+        return Buffer.from(await response.arrayBuffer())
+    }
+    if (responseContentType?.includes('audio/') || responseContentType?.includes('video/') || responseContentType?.includes('image/')) {
+        return Buffer.from(await response.arrayBuffer())
+    }
+    return response.text()
 }
 
 function makeOpenAiResponse(
@@ -150,7 +167,6 @@ const ProxyRequest = {
         allowedPrincipals: [PrincipalType.ENGINE],
     },
     schema: {
-        tags: ['ai-providers'],
         description: 'Proxy a request to a third party service',
         params: Type.Object({
             provider: Type.String(),

@@ -1,25 +1,35 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { flowHelper, FlowVersion } from '@activepieces/shared';
+import { flowStructureUtil, FlowVersion } from '@activepieces/shared';
 
 import { sampleDataApi } from './sample-data-api';
 
+const getSampleData = async (flowVersion: FlowVersion, stepName: string) => {
+  try {
+    return await sampleDataApi.get({
+      flowId: flowVersion!.flowId,
+      flowVersionId: flowVersion!.id,
+      stepName: stepName,
+    });
+  } catch (error) {
+    console.error(error);
+    return undefined;
+  }
+};
 export const sampleDataHooks = {
   useSampleDataForFlow: (flowVersion: FlowVersion | undefined) => {
     return useQuery({
       queryKey: ['sampleData', flowVersion?.id],
       enabled: !!flowVersion,
       staleTime: 0,
+      retry: 4,
+      refetchOnWindowFocus: false,
       queryFn: async () => {
-        const steps = flowHelper.getAllSteps(flowVersion!.trigger);
+        const steps = flowStructureUtil.getAllSteps(flowVersion!.trigger);
         const singleStepSampleData = await Promise.all(
           steps.map(async (step) => {
             return {
-              [step.name]: await sampleDataApi.get({
-                flowId: flowVersion!.flowId,
-                flowVersionId: flowVersion!.id,
-                stepName: step.name,
-              }),
+              [step.name]: await getSampleData(flowVersion!, step.name),
             };
           }),
         );

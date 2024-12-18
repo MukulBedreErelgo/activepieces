@@ -1,12 +1,14 @@
 import {
     apId,
+    DefaultProjectRole,
     PackageType,
     PlatformRole,
     PrincipalType,
-    ProjectMemberRole,
+    ProjectRole,
 } from '@activepieces/shared'
 import { FastifyInstance } from 'fastify'
 import { StatusCodes } from 'http-status-codes'
+import { initializeDatabase } from '../../../../src/app/database'
 import { databaseConnection } from '../../../../src/app/database/database-connection'
 import { pieceMetadataService } from '../../../../src/app/pieces/piece-metadata-service'
 import { setupServer } from '../../../../src/app/server'
@@ -22,8 +24,7 @@ import {
 let app: FastifyInstance | null = null
 
 beforeAll(async () => {
-    
-    await databaseConnection().initialize()
+    await initializeDatabase({ runMigrations: false })
     app = await setupServer()
 })
 
@@ -35,8 +36,8 @@ afterAll(async () => {
 describe('AppConnection API', () => {
     describe('Upsert AppConnection endpoint', () => {
         it.each([
-            ProjectMemberRole.ADMIN,
-            ProjectMemberRole.EDITOR,
+            DefaultProjectRole.ADMIN,
+            DefaultProjectRole.EDITOR,
         ])('Succeeds if user role is %s', async (testRole) => {
             // arrange
             const mockPlatformId = apId()
@@ -53,11 +54,13 @@ describe('AppConnection API', () => {
             })
             await databaseConnection().getRepository('project').save([mockProject])
 
+            const projectRole = await databaseConnection().getRepository('project_role').findOneByOrFail({ name: testRole }) as ProjectRole
+
             const mockProjectMember = createMockProjectMember({
                 userId: mockUser.id,
                 platformId: mockPlatform.id,
                 projectId: mockProject.id,
-                role: testRole,
+                projectRoleId: projectRole.id,
             })
             await databaseConnection().getRepository('project_member').save([mockProjectMember])
 
@@ -80,7 +83,8 @@ describe('AppConnection API', () => {
             })
 
             const mockUpsertAppConnectionRequest = {
-                name: 'test-app-connection',
+                externalId: 'test-app-connection',
+                displayName: 'test-app-connection',
                 pieceName: mockPieceMetadata.name,
                 projectId: mockProject.id,
                 type: 'SECRET_TEXT',
@@ -120,11 +124,13 @@ describe('AppConnection API', () => {
             })
             await databaseConnection().getRepository('project').save([mockProject])
 
+            const projectRole = await databaseConnection().getRepository('project_role').findOneByOrFail({ name: DefaultProjectRole.VIEWER }) as ProjectRole
+
             const mockProjectMember = createMockProjectMember({
                 userId: mockUser.id,
                 platformId: mockPlatform.id,
                 projectId: mockProject.id,
-                role: ProjectMemberRole.VIEWER,
+                projectRoleId: projectRole.id,
             })
             await databaseConnection().getRepository('project_member').save([mockProjectMember])
 
@@ -147,7 +153,8 @@ describe('AppConnection API', () => {
             })
 
             const mockUpsertAppConnectionRequest = {
-                name: 'test-app-connection',
+                externalId: 'test-app-connection',
+                displayName: 'test-app-connection',
                 pieceName: mockPieceMetadata.name,
                 projectId: mockProject.id,
                 type: 'SECRET_TEXT',
@@ -179,9 +186,9 @@ describe('AppConnection API', () => {
 
     describe('List AppConnections endpoint', () => {
         it.each([
-            ProjectMemberRole.ADMIN,
-            ProjectMemberRole.EDITOR,
-            ProjectMemberRole.VIEWER,
+            DefaultProjectRole.ADMIN,
+            DefaultProjectRole.EDITOR,
+            DefaultProjectRole.VIEWER,
         ])('Succeeds if user role is %s', async (testRole) => {
             // arrange
             const mockPlatformId = apId()
@@ -198,11 +205,13 @@ describe('AppConnection API', () => {
             })
             await databaseConnection().getRepository('project').save([mockProject])
 
+            const projectRole = await databaseConnection().getRepository('project_role').findOneByOrFail({ name: testRole }) as ProjectRole
+
             const mockProjectMember = createMockProjectMember({
                 userId: mockUser.id,
                 platformId: mockPlatform.id,
                 projectId: mockProject.id,
-                role: testRole,
+                projectRoleId: projectRole.id,
             })
             await databaseConnection().getRepository('project_member').save([mockProjectMember])
 

@@ -6,15 +6,22 @@ import {
 } from '@activepieces/shared'
 import { FastifyInstance } from 'fastify'
 import { StatusCodes } from 'http-status-codes'
+import { initializeDatabase } from '../../../../src/app/database'
 import { databaseConnection } from '../../../../src/app/database/database-connection'
 import { setupServer } from '../../../../src/app/server'
 import { generateMockToken } from '../../../helpers/auth'
-import { createMockFlow, createMockFlowVersion, createMockPlatform, createMockProject, createMockUser } from '../../../helpers/mocks'
+import {
+    createMockFlow,
+    createMockFlowVersion,
+    createMockPlatform,
+    createMockProject,
+    createMockUser,
+} from '../../../helpers/mocks'
 
 let app: FastifyInstance | null = null
 
 beforeAll(async () => {
-    await databaseConnection().initialize()
+    await initializeDatabase({ runMigrations: false })
     app = await setupServer()
 })
 
@@ -77,7 +84,7 @@ describe('Flow API', () => {
             expect(responseBody?.publishedVersionId).toBeNull()
             expect(responseBody?.schedule).toBeNull()
 
-            expect(Object.keys(responseBody?.version)).toHaveLength(9)
+            expect(Object.keys(responseBody?.version)).toHaveLength(10)
             expect(responseBody?.version?.id).toHaveLength(21)
             expect(responseBody?.version?.created).toBeDefined()
             expect(responseBody?.version?.updated).toBeDefined()
@@ -165,7 +172,7 @@ describe('Flow API', () => {
             expect(responseBody?.publishedVersionId).toBe(mockFlowVersion.id)
             expect(responseBody?.schedule).toBeNull()
 
-            expect(Object.keys(responseBody?.version)).toHaveLength(9)
+            expect(Object.keys(responseBody?.version)).toHaveLength(10)
             expect(responseBody?.version?.id).toBe(mockFlowVersion.id)
         })
 
@@ -237,7 +244,7 @@ describe('Flow API', () => {
             expect(responseBody?.publishedVersionId).toBe(mockFlowVersion.id)
             expect(responseBody?.schedule).toBeNull()
 
-            expect(Object.keys(responseBody?.version)).toHaveLength(9)
+            expect(Object.keys(responseBody?.version)).toHaveLength(10)
             expect(responseBody?.version?.id).toBe(mockFlowVersion.id)
         })
     })
@@ -304,7 +311,7 @@ describe('Flow API', () => {
             expect(responseBody?.publishedVersionId).toBe(mockFlowVersion.id)
             expect(responseBody?.schedule).toBeNull()
 
-            expect(Object.keys(responseBody?.version)).toHaveLength(9)
+            expect(Object.keys(responseBody?.version)).toHaveLength(10)
             expect(responseBody?.version?.id).toBe(mockFlowVersion.id)
             expect(responseBody?.version?.state).toBe('LOCKED')
         })
@@ -382,7 +389,10 @@ describe('Flow API', () => {
             const mockPlatform = createMockPlatform({ ownerId: mockUser.id })
             await databaseConnection().getRepository('platform').save(mockPlatform)
 
-            const mockProject = createMockProject({ platformId: mockPlatform.id, ownerId: mockUser.id })
+            const mockProject = createMockProject({
+                platformId: mockPlatform.id,
+                ownerId: mockUser.id,
+            })
             await databaseConnection().getRepository('project').save([mockProject])
 
             const mockFlow = createMockFlow({ projectId: mockProject.id })
@@ -428,7 +438,10 @@ describe('Flow API', () => {
             const mockPlatform = createMockPlatform({ ownerId: mockUser.id })
             await databaseConnection().getRepository('platform').save(mockPlatform)
 
-            const mockProject = createMockProject({ platformId: mockPlatform.id, ownerId: mockUser.id })
+            const mockProject = createMockProject({
+                platformId: mockPlatform.id,
+                ownerId: mockUser.id,
+            })
             await databaseConnection().getRepository('project').save([mockProject])
 
             const mockFlow = createMockFlow({ projectId: mockProject.id })
@@ -459,6 +472,62 @@ describe('Flow API', () => {
             expect(responseBody?.code).toBe('ENTITY_NOT_FOUND')
             expect(responseBody?.params?.entityType).toBe('FlowVersion')
             expect(responseBody?.params?.message).toBe(`flowId=${mockFlow.id}`)
+        })
+    })
+
+    describe('Export Flow Template endpoint', () => {
+        it('Exports a flow template using an API key', async () => {
+            // arrange
+            const mockUser = createMockUser()
+            await databaseConnection().getRepository('user').save([mockUser])
+
+            const mockPlatform = createMockPlatform({ ownerId: mockUser.id })
+            await databaseConnection().getRepository('platform').save(mockPlatform)
+
+            const mockProject = createMockProject({
+                ownerId: mockUser.id,
+                platformId: mockPlatform.id,
+            })
+            await databaseConnection().getRepository('project').save([mockProject])
+
+            const mockFlow = createMockFlow({
+                projectId: mockProject.id,
+                status: FlowStatus.ENABLED,
+            })
+            await databaseConnection().getRepository('flow').save([mockFlow])
+
+            const mockFlowVersion = createMockFlowVersion({
+                flowId: mockFlow.id,
+                updatedBy: mockUser.id,
+            })
+            await databaseConnection()
+                .getRepository('flow_version')
+                .save([mockFlowVersion])
+
+            const mockApiKey = 'test_api_key'
+            const mockToken = await generateMockToken({
+                type: PrincipalType.SERVICE,
+                projectId: mockProject.id,
+                id: mockApiKey,
+            })
+
+            // act
+            const response = await app?.inject({
+                method: 'GET',
+                url: `/v1/flows/${mockFlow.id}/template`,
+                headers: {
+                    authorization: `Bearer ${mockToken}`,
+                },
+            })
+
+            // assert
+            expect(response?.statusCode).toBe(StatusCodes.OK)
+            const responseBody = response?.json()
+
+            expect(responseBody).toHaveProperty('name')
+            expect(responseBody).toHaveProperty('description')
+            expect(responseBody).toHaveProperty('template')
+            expect(responseBody.template).toHaveProperty('trigger')
         })
     })
 })

@@ -51,6 +51,8 @@ export const Platform = Type.Object({
     manageProjectsEnabled: Type.Boolean(),
     projectRolesEnabled: Type.Boolean(),
     customDomainsEnabled: Type.Boolean(),
+    globalConnectionsEnabled: Type.Boolean(),
+    customRolesEnabled: Type.Boolean(),
     apiKeysEnabled: Type.Boolean(),
     flowIssuesEnabled: Type.Boolean(),
     alertsEnabled: Type.Boolean(),
@@ -61,6 +63,7 @@ export const Platform = Type.Object({
     federatedAuthProviders: FederatedAuthnProviderConfig,
     emailAuthEnabled: Type.Boolean(),
     licenseKey: Type.Optional(Type.String()),
+    pinnedPieces: Type.Array(Type.String()),
 })
 
 export type Platform = Static<typeof Platform>
@@ -69,6 +72,37 @@ export const PlatformWithoutSensitiveData = Type.Composite([Type.Object({
     federatedAuthProviders: FederatedAuthnProviderConfigWithoutSensitiveData,
     defaultLocale: Nullable(Type.String()),
     smtp: Type.Optional(Type.Object({})),
-}), Type.Omit(Platform, ['smtp', 'federatedAuthProviders', 'defaultLocale'])])
+}), Type.Pick(Platform, [
+    'ownerId',
+    'name',
+    'primaryColor',
+    'logoIconUrl',
+    'fullLogoUrl',
+    'favIconUrl',
+    'filteredPieceNames',
+    'filteredPieceBehavior',
+    'cloudAuthEnabled',
+    'gitSyncEnabled',
+    'analyticsEnabled',
+    'showPoweredBy',
+    'auditLogEnabled',
+    'embeddingEnabled',
+    'managePiecesEnabled',
+    'manageTemplatesEnabled',
+    'customAppearanceEnabled',
+    'manageProjectsEnabled',
+    'projectRolesEnabled',
+    'customDomainsEnabled',
+    'globalConnectionsEnabled',
+    'customRolesEnabled',
+    'apiKeysEnabled',
+    'flowIssuesEnabled',
+    'alertsEnabled',
+    'ssoEnabled',
+    'enforceAllowedAuthDomains',
+    'allowedAuthDomains',
+    'emailAuthEnabled',
+    'pinnedPieces',
+])])
 
 export type PlatformWithoutSensitiveData = Static<typeof PlatformWithoutSensitiveData>

@@ -2,6 +2,7 @@ import {
     ActivepiecesError,
     ALL_PRINCIPAL_TYPES,
     ApId,
+    BulkRetryFlowRequestBody,
     ErrorCode,
     ExecutionType,
     FlowRun,
@@ -12,7 +13,6 @@ import {
     ProgressUpdateType,
     RetryFlowRequestBody,
     SeekPage,
-
     SERVICE_KEY_SECURITY_OPENAPI,
 } from '@activepieces/shared'
 import {
@@ -26,7 +26,7 @@ const DEFAULT_PAGING_LIMIT = 10
 
 export const flowRunController: FastifyPluginAsyncTypebox = async (app) => {
     app.get('/', ListRequest, async (request) => {
-        return flowRunService.list({
+        return flowRunService(request.log).list({
             projectId: request.query.projectId,
             flowId: request.query.flowId,
             tags: request.query.tags,
@@ -42,7 +42,7 @@ export const flowRunController: FastifyPluginAsyncTypebox = async (app) => {
         '/:id',
         GetRequest,
         async (request, reply) => {
-            const flowRun = await flowRunService.getOnePopulatedOrThrow({
+            const flowRun = await flowRunService(request.log).getOnePopulatedOrThrow({
                 projectId: request.principal.projectId,
                 id: request.params.id,
             })
@@ -53,7 +53,7 @@ export const flowRunController: FastifyPluginAsyncTypebox = async (app) => {
     app.all('/:id/requests/:requestId', ResumeFlowRunRequest, async (req, reply) => {
         const headers = req.headers as Record<string, string>
         const queryParams = req.query as Record<string, string>
-        await flowRunService.addToQueue({
+        await flowRunService(req.log).addToQueue({
             flowRunId: req.params.id,
             requestId: req.params.requestId,
             payload: {
@@ -71,9 +71,10 @@ export const flowRunController: FastifyPluginAsyncTypebox = async (app) => {
     })
 
     app.post('/:id/retry', RetryFlowRequest, async (req) => {
-        const flowRun = await flowRunService.retry({
+        const flowRun = await flowRunService(req.log).retry({
             flowRunId: req.params.id,
             strategy: req.body.strategy,
+            projectId: req.body.projectId,
         })
 
         if (isNil(flowRun)) {
@@ -87,6 +88,18 @@ export const flowRunController: FastifyPluginAsyncTypebox = async (app) => {
         return flowRun
     })
 
+    app.post('/retry', BulkRetryFlowRequest, async (req) => {
+        return flowRunService(req.log).bulkRetry({
+            projectId: req.principal.projectId,
+            flowRunIds: req.body.flowRunIds,
+            strategy: req.body.strategy,
+            status: req.body.status,
+            flowId: req.body.flowId,
+            createdAfter: req.body.createdAfter,
+            createdBefore: req.body.createdBefore,
+        })
+    })
+
 }
 
 const FlowRunFiltered = Type.Omit(FlowRun, ['terminationReason', 'pauseMetadata'])
@@ -94,6 +107,7 @@ const FlowRunFilteredWithNoSteps = Type.Omit(FlowRun, ['terminationReason', 'pau
 
 const ListRequest = {
     config: {
+        permission: Permission.READ_RUN,
         allowedPrincipals: [PrincipalType.USER, PrincipalType.SERVICE],
     },
     schema: {
@@ -109,6 +123,7 @@ const ListRequest = {
 
 const GetRequest = {
     config: {
+        permission: Permission.READ_RUN,
         allowedPrincipals: [PrincipalType.SERVICE, PrincipalType.USER],
     },
     schema: {
@@ -138,12 +153,21 @@ const ResumeFlowRunRequest = {
 
 const RetryFlowRequest = {
     config: {
-        permission: Permission.RETRY_RUN,
+        permission: Permission.WRITE_RUN,
     },
     schema: {
         params: Type.Object({
             id: ApId,
         }),
         body: RetryFlowRequestBody,
+    },
+}
+
+const BulkRetryFlowRequest = {
+    config: {
+        permission: Permission.WRITE_RUN,
+    },
+    schema: {
+        body: BulkRetryFlowRequestBody,
     },
 }

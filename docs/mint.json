@@ -243,6 +243,7 @@
       "pages": [
         "install/configuration/overview",
         "install/configuration/environment-variables",
+        "install/configuration/seperate-workers",
         "install/configuration/setup-app-webhooks",
         "install/configuration/hardware",
         "install/configuration/setup-ssl",
@@ -294,7 +295,6 @@
       "group": "Piece Reference",
       "pages": [
         "developers/piece-reference/authentication",
-        "developers/piece-reference/use-ai",
         {
           "group": "Triggers",
           "icon": "bolt",
@@ -316,10 +316,21 @@
       ]
     },
     {
+      "group": "Unified AI",
+      "pages": [
+        "developers/unified-ai/overview",
+        "developers/unified-ai/chat",
+        "developers/unified-ai/function-calling",
+        "developers/unified-ai/image"
+      ]
+    },
+    {
       "group": "Misc",
       "pages": [
-        "developers/misc/create-new-ai-provider",
+        "developers/misc/build-piece",
+        "developers/misc/publish-piece",
         "developers/misc/pieces-ci-cd",
+        "developers/misc/create-new-ai-provider",
         "developers/misc/private-fork"
       ]
     },

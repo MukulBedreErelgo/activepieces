@@ -1,4 +1,3 @@
-import { logger } from '@activepieces/server-shared'
 import {
     AiProviderConfig,
     AiProviderWithoutSensitiveData,
@@ -15,7 +14,6 @@ import {
 import { StatusCodes } from 'http-status-codes'
 import { platformMustBeOwnedByCurrentUser } from '../ee/authentication/ee-authorization'
 import { telemetry } from '../helper/telemetry.utils'
-import { projectService } from '../project/project-service'
 import { proxyController } from './ai-provider-proxy'
 import { aiProviderService } from './ai-provider.service'
 
@@ -33,9 +31,7 @@ const engineAiProviderController: FastifyPluginCallbackTypebox = (
     done,
 ) => {
     fastify.get('/', ListProxyConfigRequest, async (request) => {
-        const projectId = (request.principal as unknown as EnginePrincipal)
-            .projectId
-        const platformId = await projectService.getPlatformId(projectId)
+        const platformId = (request.principal as unknown as EnginePrincipal).platform.id
         return aiProviderService.list(platformId)
     })
 
@@ -49,7 +45,7 @@ const aiProviderController: FastifyPluginCallbackTypebox = (
 ) => {
     fastify.addHook('preHandler', platformMustBeOwnedByCurrentUser)
     fastify.post('/', CreateProxyConfigRequest, async (request) => {
-        telemetry
+        telemetry(request.log)
             .trackProject(request.principal.projectId, {
                 name: TelemetryEventName.AI_PROVIDER_CONFIGURED,
                 payload: {
@@ -59,7 +55,7 @@ const aiProviderController: FastifyPluginCallbackTypebox = (
                 },
             })
             .catch((e) =>
-                logger.error(
+                fastify.log.error(
                     e,
                     '[ConfigureAiProvider#telemetry] telemetry.trackProject',
                 ),
@@ -91,8 +87,6 @@ const ListProxyConfigRequest = {
         allowedPrincipals: [PrincipalType.USER, PrincipalType.ENGINE],
     },
     schema: {
-        tags: ['ai-providers'],
-        description: 'List ai provider configs',
         response: {
             [StatusCodes.OK]: SeekPage(AiProviderWithoutSensitiveData),
         },
@@ -104,8 +98,6 @@ const CreateProxyConfigRequest = {
         allowedPrincipals: [PrincipalType.USER],
     },
     schema: {
-        tags: ['ai-providers'],
-        description: 'Create ai provider config',
         body: Type.Omit(AiProviderConfig, [
             'id',
             'created',
@@ -123,7 +115,5 @@ const DeleteProxyConfigRequest = {
         params: Type.Object({
             provider: Type.String(),
         }),
-        tags: ['ai-providers'],
-        description: 'Delete ai provider config',
     },
 }

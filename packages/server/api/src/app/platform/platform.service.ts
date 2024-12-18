@@ -42,6 +42,8 @@ export const platformService = {
             fullLogoUrl: fullLogoUrl ?? defaultTheme.logos.fullLogoUrl,
             favIconUrl: favIconUrl ?? defaultTheme.logos.favIconUrl,
             embeddingEnabled: false,
+            globalConnectionsEnabled: false,
+            customRolesEnabled: false,
             analyticsEnabled: false,
             defaultLocale: LocalesEnum.ENGLISH,
             emailAuthEnabled: true,
@@ -64,6 +66,7 @@ export const platformService = {
             apiKeysEnabled: false,
             customAppearanceEnabled: false,
             alertsEnabled: false,
+            pinnedPieces: [],
         }
 
         const savedPlatform = await repo().save(newPlatform)
@@ -72,8 +75,7 @@ export const platformService = {
             id: ownerId,
             platformId: savedPlatform.id,
         })
-
-
+        
         return savedPlatform
     },
 
@@ -111,6 +113,8 @@ export const platformService = {
             ...spreadIfDefined('showPoweredBy', params.showPoweredBy),
             ...spreadIfDefined('gitSyncEnabled', params.gitSyncEnabled),
             ...spreadIfDefined('embeddingEnabled', params.embeddingEnabled),
+            ...spreadIfDefined('globalConnectionsEnabled', params.globalConnectionsEnabled),
+            ...spreadIfDefined('customRolesEnabled', params.customRolesEnabled),
             ...spreadIfDefined('ssoEnabled', params.ssoEnabled),
             ...spreadIfDefined('emailAuthEnabled', params.emailAuthEnabled),
             ...spreadIfDefined(
@@ -128,6 +132,7 @@ export const platformService = {
             ...spreadIfDefined('customAppearanceEnabled', params.customAppearanceEnabled),
             ...spreadIfDefined('alertsEnabled', params.alertsEnabled),
             ...spreadIfDefined('licenseKey', params.licenseKey),
+            ...spreadIfDefined('pinnedPieces', params.pinnedPieces),
         }
 
         return repo().save(updatedPlatform)
@@ -179,6 +184,8 @@ type UpdateParams = UpdatePlatformRequestBody & {
     ssoEnabled?: boolean
     gitSyncEnabled?: boolean
     embeddingEnabled?: boolean
+    globalConnectionsEnabled?: boolean
+    customRolesEnabled?: boolean
     customDomainsEnabled?: boolean
     customAppearanceEnabled?: boolean
     manageProjectsEnabled?: boolean

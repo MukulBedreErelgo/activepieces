@@ -1,4 +1,4 @@
-import { ActivepiecesError, apId, assertNotNullOrUndefined, EnginePrincipal, ErrorCode, isNil, Principal, PrincipalType, ProjectId, UserStatus, WorkerMachineType, WorkerPrincipal } from '@activepieces/shared'
+import { ActivepiecesError, apId, assertNotNullOrUndefined, EnginePrincipal, ErrorCode, PlatformId, Principal, PrincipalType, ProjectId, UserStatus, WorkerPrincipal } from '@activepieces/shared'
 import dayjs from 'dayjs'
 import { jwtUtils } from '../../helper/jwt-utils'
 import { userService } from '../../user/user-service'
@@ -13,11 +13,14 @@ export const accessTokenManager = {
         })
     },
 
-    async generateEngineToken({ jobId, projectId, queueToken }: GenerateEngineTokenParams): Promise<string> {
+    async generateEngineToken({ jobId, projectId, queueToken, platformId }: GenerateEngineTokenParams): Promise<string> {
         const enginePrincipal: EnginePrincipal = {
             id: jobId ?? apId(),
             type: PrincipalType.ENGINE,
             projectId,
+            platform: {
+                id: platformId,
+            },
             queueToken,
         }
 
@@ -30,16 +33,10 @@ export const accessTokenManager = {
         })
     },
 
-    async generateWorkerToken({ type, platformId }: { platformId: string | null, type: WorkerMachineType }): Promise<string> {
+    async generateWorkerToken(): Promise<string> {
         const workerPrincipal: WorkerPrincipal = {
             id: apId(),
             type: PrincipalType.WORKER,
-            platform: isNil(platformId) ? null : {
-                id: platformId,
-            },
-            worker: {
-                type,
-            },
         }
 
         const secret = await jwtUtils.getJwtSecret()
@@ -94,7 +91,8 @@ async function assertUserSession(decoded: Principal): Promise<void> {
 }
 
 type GenerateEngineTokenParams = {
-    projectId: ProjectId
+    projectId: ProjectId | undefined
     queueToken?: string
     jobId?: string
+    platformId: PlatformId
 }

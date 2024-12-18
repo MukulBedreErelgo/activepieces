@@ -22,6 +22,12 @@ import {
   StepMetadataWithSuggestions,
 } from './types';
 
+type UsePieceAndMostRecentPatchProps = {
+  name: string;
+  version: string;
+  enabled?: boolean;
+};
+
 type UsePieceProps = {
   name: string;
   version?: string;
@@ -43,6 +49,7 @@ type UseStepMetadata = {
 type UsePiecesProps = {
   searchQuery?: string;
   includeHidden?: boolean;
+  includeTags?: boolean;
 };
 
 type UseMetadataProps = {
@@ -64,6 +71,36 @@ export const piecesHooks = {
       isLoading: query.isLoading,
       isSuccess: query.isSuccess,
       refetch: query.refetch,
+    };
+  },
+  useMostRecentAndExactPieceVersion: ({
+    name,
+    version,
+    enabled = true,
+  }: UsePieceAndMostRecentPatchProps) => {
+    const exactVersion = version?.startsWith('~') ? version.slice(1) : version;
+    const latestPatchVersion = `~${exactVersion}`;
+    const pieceQuery = piecesHooks.usePiece({
+      name,
+      version: exactVersion,
+      enabled,
+    });
+    const latestPatchQuery = piecesHooks.usePiece({
+      name,
+      version: latestPatchVersion,
+      enabled,
+    });
+    return {
+      versions: {
+        [exactVersion as string]: pieceQuery.pieceModel,
+        [latestPatchVersion as string]: latestPatchQuery.pieceModel,
+      },
+      isLoading: pieceQuery.isLoading || latestPatchQuery.isLoading,
+      isSuccess: pieceQuery.isSuccess && latestPatchQuery.isSuccess,
+      refetch: () => {
+        pieceQuery.refetch();
+        latestPatchQuery.refetch();
+      },
     };
   },
   useMultiplePieces: ({ names }: UseMultiplePiecesProps) => {
@@ -90,15 +127,21 @@ export const piecesHooks = {
       queries: props.map((step) => stepMetadataQueryBuilder(step)),
     });
   },
-  usePieces: ({ searchQuery, includeHidden = false }: UsePiecesProps) => {
+  usePieces: ({
+    searchQuery,
+    includeHidden = false,
+    includeTags = false,
+  }: UsePiecesProps) => {
     const query = useQuery<PieceMetadataModelSummary[], Error>({
       queryKey: ['pieces', searchQuery, includeHidden],
-      queryFn: () => piecesApi.list({ searchQuery, includeHidden }),
+      queryFn: () =>
+        piecesApi.list({ searchQuery, includeHidden, includeTags }),
       staleTime: searchQuery ? 0 : Infinity,
     });
     return {
       pieces: query.data,
       isLoading: query.isLoading,
+      refetch: query.refetch,
     };
   },
   useAllStepsMetadata: ({ searchQuery, type, enabled }: UseMetadataProps) => {
@@ -131,7 +174,7 @@ export const piecesHooks = {
             const filtersPrimitive: StepMetadataWithSuggestions[] = [
               CORE_STEP_METADATA[ActionType.CODE],
               CORE_STEP_METADATA[ActionType.LOOP_ON_ITEMS],
-              CORE_STEP_METADATA[ActionType.BRANCH],
+              CORE_STEP_METADATA[ActionType.ROUTER],
             ].filter((step) => passSearch(searchQuery, step));
             return [...filtersPrimitive, ...piecesMetadata];
           }
@@ -159,7 +202,7 @@ export const piecesHooks = {
         stepMetadata?.type,
         stepMetadata?.displayName,
       ],
-      queryFn: async () => {
+      queryFn: async (): Promise<PieceSelectorItem[]> => {
         try {
           if (!stepMetadata) {
             return [];
@@ -178,7 +221,7 @@ export const piecesHooks = {
             }
             case ActionType.CODE:
             case ActionType.LOOP_ON_ITEMS:
-            case ActionType.BRANCH:
+            case ActionType.ROUTER:
               return getCoreActions(stepMetadata.type);
             default:
               return [];
@@ -197,8 +240,10 @@ function stepMetadataQueryBuilder(step: Step) {
     step.type === ActionType.PIECE || step.type === TriggerType.PIECE;
   const pieceName = isPieceStep ? step.settings.pieceName : undefined;
   const pieceVersion = isPieceStep ? step.settings.pieceVersion : undefined;
+  const customLogoUrl =
+    'customLogoUrl' in step ? step.customLogoUrl : undefined;
   return {
-    queryKey: ['piece', step.type, pieceName, pieceVersion],
+    queryKey: ['piece', step.type, pieceName, pieceVersion, customLogoUrl],
     queryFn: () => piecesApi.getMetadata(step),
     staleTime: Infinity,
   };
@@ -217,8 +262,8 @@ function passSearch(
 }
 
 export function getCoreActions(
-  type: ActionType.BRANCH | ActionType.LOOP_ON_ITEMS | ActionType.CODE,
-) {
+  type: ActionType.LOOP_ON_ITEMS | ActionType.CODE | ActionType.ROUTER,
+): PieceSelectorItem[] {
   switch (type) {
     case ActionType.CODE:
       return [
@@ -238,15 +283,16 @@ export function getCoreActions(
           type: ActionType.LOOP_ON_ITEMS as const,
         },
       ];
-    case ActionType.BRANCH:
+
+    case ActionType.ROUTER:
       return [
         {
-          name: 'branch',
-          displayName: t('Branch'),
+          name: 'router',
+          displayName: t('Router'),
           description: t(
             'Split your flow into branches depending on condition(s)',
           ),
-          type: ActionType.BRANCH as const,
+          type: ActionType.ROUTER as const,
         },
       ];
   }

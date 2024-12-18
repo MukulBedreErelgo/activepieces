@@ -5,6 +5,7 @@ import { useMutation } from '@tanstack/react-query';
 import { t } from 'i18next';
 import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useLocation } from 'react-router-dom';
 
 import { ApMarkdown } from '@/components/custom/markdown';
 import { ShowPoweredBy } from '@/components/show-powered-by';
@@ -29,14 +30,13 @@ import {
   FormInput,
   FormInputType,
   FormResponse,
+  HumanInputFormResultTypes,
+  HumanInputFormResult,
+  createKeyForFormInput,
 } from '@activepieces/shared';
 
 import { Checkbox } from '../../../components/ui/checkbox';
-import {
-  FormResult,
-  FormResultTypes,
-  humanInputApi,
-} from '../lib/human-input-api';
+import { humanInputApi } from '../lib/human-input-api';
 
 type ApFormProps = {
   form: FormResponse;
@@ -45,23 +45,6 @@ type ApFormProps = {
 type FormInputWithName = FormInput & {
   name: string;
 };
-/**We do this because react form inputs must not contain quotes */
-export const removeQuotations = (key: string): string => {
-  return key.replaceAll(/[\\"'’\n\r\t]/g, '');
-};
-
-const createKeyForFormInput = (displayName: string, keepQuotes = false) => {
-  const inputKey = displayName
-    .replace(/\s(.)/g, function ($1) {
-      return $1.toUpperCase();
-    })
-    .replace(/\s/g, '')
-    .replace(/^(.)/, function ($1) {
-      return $1.toLowerCase();
-    });
-
-  return keepQuotes ? inputKey : removeQuotations(inputKey);
-};
 
 /**We do this because it was the behaviour in previous versions of Activepieces.*/
 const putBackQuotesForInputNames = (
@@ -69,8 +52,8 @@ const putBackQuotesForInputNames = (
   inputs: FormInputWithName[],
 ) => {
   return inputs.reduce((acc, input) => {
-    acc[createKeyForFormInput(input.displayName, true)] =
-      value[createKeyForFormInput(input.displayName, false)];
+    const key = createKeyForFormInput(input.displayName);
+    acc[key] = value[key];
     return acc;
   }, {} as Record<string, unknown>);
 };
@@ -82,9 +65,15 @@ const requiredPropertySettings = {
 
 const createPropertySchema = (input: FormInputWithName) => {
   const schemaSettings = input.required ? requiredPropertySettings : {};
-  return input.type === FormInputType.TOGGLE
-    ? Type.Boolean(schemaSettings)
-    : Type.String(schemaSettings);
+  switch (input.type) {
+    case FormInputType.TOGGLE:
+      return Type.Boolean(schemaSettings);
+    case FormInputType.TEXT:
+    case FormInputType.TEXT_AREA:
+      return Type.String(schemaSettings);
+    case FormInputType.FILE:
+      return Type.Unknown(schemaSettings);
+  }
 };
 
 function buildSchema(inputs: FormInputWithName[]) {
@@ -104,9 +93,8 @@ function buildSchema(inputs: FormInputWithName[]) {
     ),
   };
 }
-const handleDownloadFile = (formResult: FormResult) => {
+const handleDownloadFile = (fileBase: FileResponseInterface) => {
   const link = document.createElement('a');
-  const fileBase = formResult.value as FileResponseInterface;
   if ('url' in fileBase) {
     link.href = fileBase.url;
   } else {
@@ -120,18 +108,17 @@ const handleDownloadFile = (formResult: FormResult) => {
   link.click();
 };
 
-const fileToBase64 = (
-  file: File,
-  callback: (result: string | ArrayBuffer | null) => void,
-) => {
-  const reader = new FileReader();
-  reader.readAsDataURL(file);
-  reader.onloadend = () => {
-    callback(reader.result);
-  };
-};
-
 const ApForm = ({ form, useDraft }: ApFormProps) => {
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const queryParamsLowerCase = Array.from(queryParams.entries()).reduce(
+    (acc, [key, value]) => {
+      acc[key.toLowerCase()] = value;
+      return acc;
+    },
+    {} as Record<string, string>,
+  );
+
   const inputs = useRef<FormInputWithName[]>(
     form.props.inputs.map((input) => {
       return {
@@ -140,63 +127,80 @@ const ApForm = ({ form, useDraft }: ApFormProps) => {
       };
     }),
   );
+
   const schema = buildSchema(inputs.current);
+
+  const defaultValues = { ...schema.defaultValues };
+  inputs.current.forEach((input) => {
+    const queryValue = queryParamsLowerCase[input.name.toLowerCase()];
+    if (queryValue !== undefined) {
+      defaultValues[input.name] = queryValue;
+    }
+  });
 
   const [markdownResponse, setMarkdownResponse] = useState<string | null>(null);
   const { data: showPoweredBy } = flagsHooks.useFlag<boolean>(
     ApFlagId.SHOW_POWERED_BY_IN_FORM,
   );
   const reactForm = useForm({
-    defaultValues: schema.defaultValues,
+    defaultValues,
     resolver: typeboxResolver(schema.properties),
   });
 
-  const { mutate, isPending } = useMutation<FormResult | null, Error>({
-    mutationFn: async () =>
-      humanInputApi.submitForm(
-        form,
-        useDraft,
-        putBackQuotesForInputNames(reactForm.getValues(), inputs.current),
-      ),
-    onSuccess: (formResult) => {
-      switch (formResult?.type) {
-        case FormResultTypes.MARKDOWN:
-          setMarkdownResponse(formResult.value as string);
-          break;
-        case FormResultTypes.FILE:
-          handleDownloadFile(formResult);
-          break;
-        default:
-          toast({
-            title: t('Success'),
-            description: t('Your submission was successfully received.'),
-            duration: 3000,
-          });
-          break;
-      }
-    },
-    onError: (error) => {
-      if (api.isError(error)) {
-        const status = error.response?.status;
-        if (status === 404) {
-          toast({
-            title: t('Flow not found'),
-            description: t(
-              'The flow you are trying to submit to does not exist.',
-            ),
-            duration: 3000,
-          });
-        } else {
-          toast({
-            title: t('Error'),
-            description: t('The flow failed to execute.'),
-            duration: 3000,
-          });
+  const { mutate, isPending } = useMutation<HumanInputFormResult | null, Error>(
+    {
+      mutationFn: async () =>
+        humanInputApi.submitForm(
+          form,
+          useDraft,
+          putBackQuotesForInputNames(reactForm.getValues(), inputs.current),
+        ),
+      onSuccess: (formResult) => {
+        switch (formResult?.type) {
+          case HumanInputFormResultTypes.MARKDOWN: {
+            setMarkdownResponse(formResult.value as string);
+            if (formResult.files) {
+              formResult.files.forEach((file) => {
+                handleDownloadFile(file as FileResponseInterface);
+              });
+            }
+            break;
+          }
+          case HumanInputFormResultTypes.FILE:
+            handleDownloadFile(formResult.value as FileResponseInterface);
+            break;
+          default:
+            toast({
+              title: t('Success'),
+              description: t('Your submission was successfully received.'),
+              duration: 3000,
+            });
+            break;
         }
-      }
-      console.error(error);
+      },
+      onError: (error) => {
+        if (api.isError(error)) {
+          const status = error.response?.status;
+          if (status === 404) {
+            toast({
+              title: t('Flow not found'),
+              description: t(
+                'The flow you are trying to submit to does not exist.',
+              ),
+              duration: 3000,
+            });
+          } else {
+            toast({
+              title: t('Error'),
+              description: t('The flow failed to execute.'),
+              duration: 3000,
+            });
+          }
+        }
+        console.error(error);
+      },
     },
-  });
+  );
   return (
     <div className="w-full h-full flex">
       <div className="container py-20">
@@ -276,9 +280,7 @@ const ApForm = ({ form, useDraft }: ApFormProps) => {
                                         onChange={(e) => {
                                           const file = e.target.files?.[0];
                                           if (file) {
-                                            fileToBase64(file, (result) => {
-                                              field.onChange(result);
-                                            });
+                                            field.onChange(file);
                                           }
                                         }}
                                         placeholder={input.displayName}

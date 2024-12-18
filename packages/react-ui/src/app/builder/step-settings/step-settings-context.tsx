@@ -38,8 +38,6 @@ export type StepSettingsContextState = {
   pieceModel: PieceMetadataModel | undefined;
   formSchema: TObject<any>;
   updateFormSchema: (key: string, newFieldSchema: PiecePropertyMap) => void;
-  skipValueChangeDetection: boolean;
-  setSkipValueChangeDetection: (skipChanges: boolean) => void;
 };
 
 export type StepSettingsProviderProps = {
@@ -60,8 +58,6 @@ export const StepSettingsProvider = ({
   const [formSchema, setFormSchema] = useState<TObject<any>>(
     Type.Object(Type.Any()),
   );
-  const [skipValueChangeDetection, setSkipValueChangeDetection] =
-    useState(false);
   const formSchemaRef = useRef<boolean>(false);
 
   if (!formSchemaRef.current && selectedStep) {
@@ -71,7 +67,7 @@ export const StepSettingsProvider = ({
       pieceModel ?? null,
     );
     formSchemaRef.current = true;
-    setFormSchema(schema);
+    setFormSchema(schema as TObject<any>);
   }
 
   const updateFormSchema = useCallback(
@@ -94,8 +90,6 @@ export const StepSettingsProvider = ({
         pieceModel,
         formSchema,
         updateFormSchema,
-        skipValueChangeDetection,
-        setSkipValueChangeDetection,
       }}
     >
       {children}

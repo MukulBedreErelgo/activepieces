@@ -12,7 +12,10 @@ import {
     PieceType,
     ProjectId,
 } from '@activepieces/shared'
+import { FastifyBaseLogger } from 'fastify'
 import { nanoid } from 'nanoid'
+import { system } from '../../helper/system/system'
+import { AppSystemProp } from '../../helper/system/system-prop'
 import {
     PieceMetadataSchema,
 } from '../piece-metadata-entity'
@@ -21,12 +24,13 @@ import { PieceMetadataService } from './piece-metadata-service'
 import { toPieceMetadataModelSummary } from '.'
 
 const loadPiecesMetadata = async (): Promise<PieceMetadata[]> => {
-    const pieces = await filePiecesUtils.findAllPieces()
+    const packages = system.getOrThrow(AppSystemProp.DEV_PIECES)?.split(',')
+    const pieces = await filePiecesUtils(packages, system.globalLogger()).findAllPieces()
     return pieces.sort((a, b) =>
         a.displayName.toUpperCase().localeCompare(b.displayName.toUpperCase()),
     )
 }
-export const FilePieceMetadataService = (): PieceMetadataService => {
+export const FilePieceMetadataService = (_log: FastifyBaseLogger): PieceMetadataService => {
     return {
         async list(params): Promise<PieceMetadataModelSummary[]> {
             const { projectId } = params
@@ -84,11 +88,13 @@ export const FilePieceMetadataService = (): PieceMetadataService => {
             name,
             version,
             projectId,
+            platformId,
         }): Promise<PieceMetadataModel> {
             const pieceMetadata = await this.get({
                 name,
                 version,
                 projectId,
+                platformId,
             })
 
             if (isNil(pieceMetadata)) {
@@ -116,7 +122,7 @@ export const FilePieceMetadataService = (): PieceMetadataService => {
             throw new Error('Creating pieces is not supported in development mode')
         },
 
-        async getExactPieceVersion({ projectId, name, version }): Promise<string> {
+        async getExactPieceVersion({ projectId, platformId, name, version }): Promise<string> {
             const isExactVersion = EXACT_VERSION_REGEX.test(version)
 
             if (isExactVersion) {
@@ -125,6 +131,7 @@ export const FilePieceMetadataService = (): PieceMetadataService => {
 
             const pieceMetadata = await this.getOrThrow({
                 projectId,
+                platformId,
                 name,
                 version,
             })

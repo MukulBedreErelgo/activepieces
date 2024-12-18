@@ -63,11 +63,11 @@ const FlowActionMenu: React.FC<FlowActionMenuProps> = ({
   flowVersion,
   children,
   readonly,
-  insideBuilder,
   onRename,
   onMoveTo,
   onDuplicate,
   onDelete,
+  insideBuilder,
 }) => {
   const { platform } = platformHooks.useCurrentPlatform();
   const openNewWindow = useNewWindow();
@@ -78,14 +78,10 @@ const FlowActionMenu: React.FC<FlowActionMenuProps> = ({
   const { checkAccess } = useAuthorization();
   const userHasPermissionToUpdateFlow = checkAccess(Permission.WRITE_FLOW);
   const userHasPermissionToPushToGit = checkAccess(Permission.WRITE_GIT_REPO);
-  const importFlowProps: ImportFlowDialogProps = insideBuilder
-    ? {
-        insideBuilder: true,
-        flowId: flow.id,
-      }
-    : {
-        insideBuilder: false,
-      };
+  const importFlowProps: ImportFlowDialogProps = {
+    insideBuilder: true,
+    flowId: flow.id,
+  };
   const { embedState } = useEmbedding();
   const isDevelopmentBranch =
     gitSync && gitSync.branchType === GitBranchType.DEVELOPMENT;
@@ -101,6 +97,7 @@ const FlowActionMenu: React.FC<FlowActionMenuProps> = ({
         request: {
           displayName: flowVersion.displayName,
           trigger: flowVersion.trigger,
+          schemaVersion: flowVersion.schemaVersion,
         },
       });
       return updatedFlow;
@@ -151,7 +148,7 @@ const FlowActionMenu: React.FC<FlowActionMenuProps> = ({
           </PermissionNeededTooltip>
         )}
         <PermissionNeededTooltip hasPermission={userHasPermissionToPushToGit}>
-          <PushToGitDialog flowId={flow.id}>
+          <PushToGitDialog flowIds={[flow.id]}>
             <DropdownMenuItem
               disabled={!userHasPermissionToPushToGit}
               onSelect={(e) => e.preventDefault()}
@@ -168,11 +165,7 @@ const FlowActionMenu: React.FC<FlowActionMenuProps> = ({
           <PermissionNeededTooltip
             hasPermission={userHasPermissionToUpdateFlow}
           >
-            <MoveFlowDialog
-              flow={flow}
-              flowVersion={flowVersion}
-              onMoveTo={onMoveTo}
-            >
+            <MoveFlowDialog flows={[flow]} onMoveTo={onMoveTo}>
               <DropdownMenuItem
                 disabled={!userHasPermissionToUpdateFlow}
                 onSelect={(e) => e.preventDefault()}
@@ -203,7 +196,7 @@ const FlowActionMenu: React.FC<FlowActionMenuProps> = ({
           </DropdownMenuItem>
         </PermissionNeededTooltip>
 
-        {!readonly && (
+        {!readonly && insideBuilder && (
           <PermissionNeededTooltip
             hasPermission={userHasPermissionToUpdateFlow}
           >
@@ -231,7 +224,7 @@ const FlowActionMenu: React.FC<FlowActionMenuProps> = ({
           </div>
         </DropdownMenuItem>
         {!embedState.isEmbedded && (
-          <ShareTemplateDialog flowId={flow.id} flowVersion={flowVersion}>
+          <ShareTemplateDialog flowId={flow.id} flowVersionId={flowVersion.id}>
             <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
               <div className="flex cursor-pointer  flex-row gap-2 items-center">
                 <Share2 className="h-4 w-4" />

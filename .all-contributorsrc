@@ -1316,6 +1316,96 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "manojkum-d",
+      "name": "manoj kumar d",
+      "avatar_url": "https://avatars.githubusercontent.com/u/141437046?v=4",
+      "profile": "https://github.com/manojkum-d",
+      "contributions": [
+        "plugin"
+      ]
+    },
+    {
+      "login": "felifluid",
+      "name": "Feli",
+      "avatar_url": "https://avatars.githubusercontent.com/u/59516203?v=4",
+      "profile": "https://github.com/felifluid",
+      "contributions": [
+        "plugin"
+      ]
+    },
+    {
+      "login": "mordonez",
+      "name": "Miguel",
+      "avatar_url": "https://avatars.githubusercontent.com/u/293837?v=4",
+      "profile": "https://github.com/mordonez",
+      "contributions": [
+        "plugin"
+      ]
+    },
+    {
+      "login": "dev-instasent",
+      "name": "Instasent DEV",
+      "avatar_url": "https://avatars.githubusercontent.com/u/116744368?v=4",
+      "profile": "https://github.com/dev-instasent",
+      "contributions": [
+        "plugin"
+      ]
+    },
+    {
+      "login": "matthieu-lombard",
+      "name": "Matthieu Lombard",
+      "avatar_url": "https://avatars.githubusercontent.com/u/33624489?v=4",
+      "profile": "https://github.com/matthieu-lombard",
+      "contributions": [
+        "plugin"
+      ]
+    },
+    {
+      "login": "beyondlevi",
+      "name": "beyondlevi",
+      "avatar_url": "https://avatars.githubusercontent.com/u/57486338?v=4",
+      "profile": "https://github.com/beyondlevi",
+      "contributions": [
+        "plugin"
+      ]
+    },
+    {
+      "login": "rafalzawadzki",
+      "name": "Rafal Zawadzki",
+      "avatar_url": "https://avatars.githubusercontent.com/u/10667346?v=4",
+      "profile": "https://rafal.fyi",
+      "contributions": [
+        "plugin"
+      ]
+    },
+    {
+      "login": "simonc",
+      "name": "Simon Courtois",
+      "avatar_url": "https://avatars.githubusercontent.com/u/119303?v=4",
+      "profile": "https://www.pdfmonkey.io/",
+      "contributions": [
+        "plugin"
+      ]
+    },
+    {
+      "login": "alegria-solutions",
+      "name": "alegria-solutions",
+      "avatar_url": "https://avatars.githubusercontent.com/u/124846022?v=4",
+      "profile": "https://github.com/alegria-solutions",
+      "contributions": [
+        "plugin"
+      ]
+    },
+    {
+      "login": "D-Rowe-FS",
+      "name": "D-Rowe-FS",
+      "avatar_url": "https://avatars.githubusercontent.com/u/142934784?v=4",
+      "profile": "https://github.com/D-Rowe-FS",
+      "contributions": [
+        "plugin"
+      ]
     }
   ],
   "commitType": "docs"

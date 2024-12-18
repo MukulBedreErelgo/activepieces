@@ -10,24 +10,19 @@ import {
 } from '@/components/ui/chat/chat-bubble';
 import { ChatMessageList } from '@/components/ui/chat/chat-message-list';
 import { cn } from '@/lib/utils';
-import { ApErrorParams, ChatUIResponse, ErrorCode } from '@activepieces/shared';
+import {
+  ApErrorParams,
+  ChatUIResponse,
+  ErrorCode,
+  FileResponseInterface,
+} from '@activepieces/shared';
 
-import { FileMessage } from './file-message';
-import { ImageMessage } from './image-message';
-import { TextMessage } from './text-message';
-
+import { MultiMediaMessage } from './chat-message';
 export const Messages = Type.Array(
   Type.Object({
     role: Type.Union([Type.Literal('user'), Type.Literal('bot')]),
-    content: Type.String(),
-    type: Type.Optional(
-      Type.Union([
-        Type.Literal('text'),
-        Type.Literal('image'),
-        Type.Literal('file'),
-      ]),
-    ),
-    mimeType: Type.Optional(Type.String()),
+    textContent: Type.Optional(Type.String()),
+    files: Type.Optional(Type.Array(FileResponseInterface)),
   }),
 );
 export type Messages = Static<typeof Messages>;
@@ -53,7 +48,7 @@ const formatError = (
       return projectId ? (
         <span>
           No response from the chatbot. Ensure that{' '}
-          <strong>Respond on UI (Markdown)</strong> is the final step in{' '}
+          <strong>Respond on UI</strong> is in{' '}
           <a
             href={`/projects/${projectId}/flows/${flowId}`}
             className="text-primary underline"
@@ -82,32 +77,18 @@ const formatError = (
   }
 };
 
-const renderMessageContent = (
-  message: Static<typeof Messages>[number],
-  setSelectedImage: (image: string | null) => void,
-) => {
-  switch (message.type) {
-    case 'image':
-      return (
-        <ImageMessage
-          content={message.content}
-          setSelectedImage={setSelectedImage}
-        />
-      );
-    case 'file':
-      return <FileMessage content={message.content} />;
-    default:
-      return <TextMessage content={message.content} role={message.role} />;
-  }
-};
-
-const renderErrorBubble = (
-  chatUI: ChatUIResponse | null | undefined,
-  flowId: string,
-  sendingError: ApErrorParams,
-  sendMessage: (arg0: { isRetrying: boolean }) => void,
-) => (
-  <ChatBubble variant="received">
+const ErrorBubble = ({
+  chatUI,
+  flowId,
+  sendingError,
+  sendMessage,
+}: {
+  chatUI: ChatUIResponse | null | undefined;
+  flowId: string;
+  sendingError: ApErrorParams;
+  sendMessage: (arg0: { isRetrying: boolean }) => void;
+}) => (
+  <ChatBubble variant="received" className="pb-8">
     <div className="relative">
       <ChatBubbleAvatar
         src={chatUI?.platformLogoUrl}
@@ -132,9 +113,14 @@ const renderErrorBubble = (
     </div>
   </ChatBubble>
 );
+ErrorBubble.displayName = 'ErrorBubble';
 
-const renderSendingBubble = (chatUI: ChatUIResponse | null | undefined) => (
-  <ChatBubble variant="received">
+const SendingBubble = ({
+  chatUI,
+}: {
+  chatUI: ChatUIResponse | null | undefined;
+}) => (
+  <ChatBubble variant="received" className="pb-8">
     <ChatBubbleAvatar
       src={chatUI?.platformLogoUrl}
       fallback={<BotIcon className="size-5" />}
@@ -142,6 +128,7 @@ const renderSendingBubble = (chatUI: ChatUIResponse | null | undefined) => (
     <ChatBubbleMessage isLoading />
   </ChatBubble>
 );
+SendingBubble.displayName = 'SendingBubble';
 
 export const MessagesList = React.memo(
   ({
@@ -155,36 +142,56 @@ export const MessagesList = React.memo(
     setSelectedImage,
   }: MessagesListProps) => {
     return (
-      <ChatMessageList ref={messagesRef}>
-        {messages.map((message, index) => (
-          <ChatBubble
-            key={index}
-            variant={message.role === 'user' ? 'sent' : 'received'}
-            className="flex items-start"
-          >
-            {message.role === 'bot' && (
-              <ChatBubbleAvatar
-                src={chatUI?.platformLogoUrl}
-                fallback={<BotIcon className="size-5" />}
-              />
-            )}
-            <ChatBubbleMessage
-              className={cn(
-                'flex flex-col gap-2',
-                message.role === 'bot' ? 'w-full' : '',
-              )}
+      <ChatMessageList ref={messagesRef} className="w-full max-w-3xl">
+        {messages.map((message, index) => {
+          const isLastMessage = index === messages.length - 1;
+          return (
+            <ChatBubble
+              id={isLastMessage ? 'last-message' : undefined}
+              key={index}
+              variant={message.role === 'user' ? 'sent' : 'received'}
+              className={cn('flex items-start', isLastMessage ? 'pb-8' : '')}
             >
-              {renderMessageContent(message, setSelectedImage)}
-            </ChatBubbleMessage>
-          </ChatBubble>
-        ))}
-        {sendingError &&
-          !isSending &&
-          renderErrorBubble(chatUI, flowId, sendingError, sendMessage)}
-        {isSending && renderSendingBubble(chatUI)}
+              {message.role === 'bot' && (
+                <ChatBubbleAvatar
+                  src={chatUI?.platformLogoUrl}
+                  fallback={<BotIcon className="size-5" />}
+                />
+              )}
+              <ChatBubbleMessage
+                className={cn(
+                  'flex flex-col gap-2',
+                  message.role === 'bot' ? 'w-full' : '',
+                )}
+              >
+                <MultiMediaMessage
+                  textContent={message.textContent}
+                  attachments={message.files}
+                  role={message.role}
+                  setSelectedImage={setSelectedImage}
+                />
+              </ChatBubbleMessage>
+            </ChatBubble>
+          );
+        })}
+        {sendingError && !isSending && (
+          <ErrorBubble
+            chatUI={chatUI}
+            flowId={flowId}
+            sendingError={sendingError}
+            sendMessage={sendMessage}
+          />
+        )}
+        {isSending && <SendingBubble chatUI={chatUI} />}
       </ChatMessageList>
     );
   },
+  (prevProps, nextProps) => {
+    return (
+      prevProps.messages.length === nextProps.messages.length &&
+      prevProps.sendingError === nextProps.sendingError &&
+      prevProps.isSending === nextProps.isSending
+    );
+  },
 );
-
 MessagesList.displayName = 'MessagesList';
